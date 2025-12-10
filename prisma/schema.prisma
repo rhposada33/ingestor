@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
+}
+
+model Tenant {
+  id        String @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  
+  cameras Camera[]
+  events  Event[]
+
+  @@map("tenants")
+}
+
+model Camera {
+  id          String @id @default(cuid())
+  tenantId    String
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  key         String // Frigate camera name
+  label       String?
+  createdAt   DateTime @default(now())
+  
+  events Event[]
+
+  @@unique([tenantId, key])
+  @@map("cameras")
+}
+
+model Event {
+  id         String @id @default(cuid())
+  tenantId   String
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cameraId   String
+  camera     Camera @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+  frigateId  String // event_id from MQTT
+  type       String
+  label      String?
+  hasSnapshot Boolean @default(false)
+  hasClip     Boolean @default(false)
+  startTime   Float?
+  endTime     Float?
+  rawPayload  Json
+  createdAt   DateTime @default(now())
+
+  @@unique([tenantId, frigateId])
+  @@index([tenantId])
+  @@index([cameraId])
+  @@index([createdAt])
+  @@map("events")
+}

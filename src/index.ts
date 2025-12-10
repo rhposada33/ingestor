@@ -6,6 +6,7 @@ dotenv.config();
 
 import { getConfig } from './config/env.js';
 import { ConfigManager } from './config/ConfigManager.js';
+import { connectDatabase, disconnectDatabase } from './db/client.js';
 
 // TODO: Initialize logger
 // TODO: Add graceful shutdown handlers
@@ -26,16 +27,16 @@ const main = async (): Promise<void> => {
     console.log(`🔗 MQTT Broker: ${config.env.mqtt.brokerUrl}`);
     console.log(`🗄️  Database: ${config.env.database.postgresUrl.split('@')[1]}`);
 
-    // TODO: Initialize database
-    // const db = new Database(config);
+    // Initialize database connection
+    await connectDatabase();
 
     // TODO: Initialize MQTT client
-    // const mqtt = new MqttClient(config);
+    // TODO: Set up message handlers
 
-    // TODO: Set up error handlers
+    // Set up graceful shutdown
     process.on('SIGINT', async () => {
       console.log('\n⏹️  Gracefully shutting down...');
-      // TODO: Cleanup resources
+      await disconnectDatabase();
       process.exit(0);
     });
 
