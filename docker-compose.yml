@@ -1,6 +1,19 @@
 version: '3.8'
 
 services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: ingestor-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_logs:/mosquitto/log
+    networks:
+      - ingestor-network
+
   postgres:
     image: postgres:16-alpine
     container_name: ingestor-db
@@ -37,6 +50,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mosquitto:
+        condition: service_started
     volumes:
       - .:/app
       - /app/node_modules
@@ -46,6 +61,10 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  mosquitto_data:
+    driver: local
+  mosquitto_logs:
     driver: local
 
 networks:
