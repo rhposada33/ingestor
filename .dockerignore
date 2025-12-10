@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+dist
+.env.local
+.DS_Store
+.git
+.gitignore
+README.md
+CONFIGURATION.md
+PRISMA*.md
+*.md
+.eslintrc.cjs
+.prettierrc.json
+.prettierignore
