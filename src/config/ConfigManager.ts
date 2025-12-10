@@ -1,29 +1,37 @@
-// TODO: Define configuration interface
+import type { EnvironmentConfig } from './env.js';
+
+// TODO: Define application-level configuration interface
 export interface IConfig {
-  // TODO: Add configuration properties
-  // mqtt: MqttConfig;
-  // database: DatabaseConfig;
-  // app: AppConfig;
+  // Environment configuration
+  env: EnvironmentConfig;
+  // TODO: Add additional application configuration properties
 }
 
 // TODO: Implement configuration loading and validation
 export class ConfigManager {
   private static instance: ConfigManager;
-  private config: IConfig = {};
+  private config: IConfig;
 
-  private constructor() {
-    // TODO: Load configuration from environment variables
+  private constructor(envConfig: EnvironmentConfig) {
+    this.config = {
+      env: envConfig,
+      // TODO: Initialize other configuration sections
+    };
   }
 
-  public static getInstance(): ConfigManager {
+  public static getInstance(envConfig: EnvironmentConfig): ConfigManager {
     if (!ConfigManager.instance) {
-      ConfigManager.instance = new ConfigManager();
+      ConfigManager.instance = new ConfigManager(envConfig);
     }
     return ConfigManager.instance;
   }
 
   public getConfig(): IConfig {
     return this.config;
+  }
+
+  public getEnv(): EnvironmentConfig {
+    return this.config.env;
   }
 
   // TODO: Add getter methods for specific configuration sections
