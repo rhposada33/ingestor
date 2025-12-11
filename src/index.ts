@@ -68,7 +68,9 @@ const main = async (): Promise<void> => {
     ingestorBus.onFrigateEvent(async (rawEvent: FrigateEvent) => {
       try {
         // Normalize the raw event from MQTT
-        const normalized = normalizeMessage(rawEvent, `frigate/${rawEvent.after.camera}/events`);
+        // Topic should be in format: frigate/events/<camera>
+        const camera = rawEvent.after?.camera || rawEvent.before?.camera || 'unknown';
+        const normalized = normalizeMessage(rawEvent, `frigate/events/${camera}`);
 
         if (!normalized) {
           console.warn('⚠️  Failed to normalize Frigate event:', {

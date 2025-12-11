@@ -29,6 +29,9 @@ export interface NormalizedFrigateEvent {
   // Frigate instance identifier (from MQTT topic)
   frigateId: string;
 
+  // Event ID from payload (from before.id or after.id)
+  eventId: string;
+
   // Camera name (from MQTT topic)
   camera: string;
 
@@ -345,19 +348,24 @@ export function normalizeEventMessage(
     endTime = toNumber(rawEndTime);
   }
 
-  // Extract optional metadata
-  const before = safeGet<Record<string, unknown>>(payload, 'before');
-  const after = safeGet<Record<string, unknown>>(payload, 'after');
+  // Extract event ID from before or after
+  const before_data = safeGet<Record<string, unknown>>(payload, 'before');
+  const after_data = safeGet<Record<string, unknown>>(payload, 'after');
+  
+  const eventId = safeGet<string>(payload, 'id') ||
+    safeGet<string>(before_data, 'id') ||
+    safeGet<string>(after_data, 'id') ||
+    'unknown';
 
   // Build metadata
   const metadata: NormalizedFrigateEvent['metadata'] = {};
 
   // Extract detected labels from before/after counts
-  if (before || after) {
+  if (before_data || after_data) {
     const detectedLabels: Record<string, number> = {};
 
-    if (after) {
-      for (const [key, value] of Object.entries(after)) {
+    if (after_data) {
+      for (const [key, value] of Object.entries(after_data)) {
         if (typeof value === 'number' && key !== 'count') {
           detectedLabels[key] = value;
         }
@@ -391,6 +399,7 @@ export function normalizeEventMessage(
 
   return {
     frigateId,
+    eventId,
     camera,
     type: type as 'new' | 'update' | 'end',
     label,

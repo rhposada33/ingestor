@@ -258,13 +258,13 @@ export async function handleFrigateEvent(
         where: {
           tenantId_frigateId: {
             tenantId: camera.tenantId,
-            frigateId: normalized.frigateId,
+            frigateId: normalized.eventId,
           },
         },
         create: {
           tenantId: camera.tenantId,
           cameraId: camera.id,
-          frigateId: normalized.frigateId,
+          frigateId: normalized.eventId,
           type: normalized.type,
           label: normalized.label,
           hasSnapshot: normalized.hasSnapshot,

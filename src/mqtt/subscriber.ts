@@ -6,8 +6,8 @@ import type { FrigateEvent, FrigateReview, FrigateAvailable } from './bus.js';
  * Subscription topics for Frigate MQTT events
  */
 const FRIGATE_TOPICS = {
-  events: 'frigate/events',
-  reviews: 'frigate/reviews',
+  events: 'frigate/events/#',
+  reviews: 'frigate/reviews/#',
   available: 'frigate/available/#',
 } as const;
 
@@ -27,8 +27,17 @@ function parseFrigateEvent(payload: string): FrigateEvent {
   try {
     const data = JSON.parse(payload);
     // Basic validation that required fields exist
-    if (!data.before || !data.after || !data.type) {
-      throw new Error('Invalid Frigate event structure');
+    // Type must be present, and either before/after or top-level camera/label
+    const hasType = data.type && ['new', 'update', 'end'].includes(data.type);
+    const hasTopLevelCamera = data.camera || (data.before && data.before.camera) || (data.after && data.after.camera);
+    const hasTopLevelLabel = data.label || (data.before && data.before.label) || (data.after && data.after.label);
+
+    if (!hasType || !hasTopLevelCamera || !hasTopLevelLabel) {
+      throw new Error(
+        `Invalid Frigate event structure: missing ${
+          !hasType ? 'type, ' : ''
+        }${!hasTopLevelCamera ? 'camera, ' : ''}${!hasTopLevelLabel ? 'label' : ''}`
+      );
     }
     return data as FrigateEvent;
   } catch (error) {
@@ -157,12 +166,18 @@ function handleIncomingMessage(topic: string, payload: string): void {
   try {
     // Match topic to handler
     for (const handler of topicHandlers) {
-      // Simple wildcard matching for available topic
-      if (handler.pattern === 'frigate/available/#') {
-        if (!topic.startsWith('frigate/available/')) continue;
-      } else if (handler.pattern !== topic) {
-        continue;
+      let matches = false;
+
+      // Wildcard matching for all topics (all use wildcard now)
+      if (handler.pattern === 'frigate/events/#') {
+        matches = topic.startsWith('frigate/events/');
+      } else if (handler.pattern === 'frigate/reviews/#') {
+        matches = topic.startsWith('frigate/reviews/');
+      } else if (handler.pattern === 'frigate/available/#') {
+        matches = topic.startsWith('frigate/available/');
       }
+
+      if (!matches) continue;
 
       // Parse and emit
       try {

@@ -17,11 +17,16 @@ import 'dotenv/config';
 // Configuration from environment
 // When running locally (outside Docker), use localhost
 // When running in Docker, use the service name from docker-compose
-const defaultBrokerUrl = process.env.DOCKER_ENV === 'true' 
-  ? 'mqtt://mosquitto:1883'
-  : 'mqtt://localhost:1883';
+const defaultBrokerUrl = process.env.DOCKER_ENV === 'true' ? 'mqtt://mosquitto:1883' : 'mqtt://localhost:1883';
 
-const brokerUrl = process.env.MQTT_BROKER_URL || defaultBrokerUrl;
+function normalizeBrokerUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  // If the URL targets the docker service name but we're running locally,
+  // map it to localhost so the host can reach the container-mapped port.
+  return url.replace('mqtt://mosquitto', 'mqtt://localhost').replace('mqtts://mosquitto', 'mqtts://localhost');
+}
+
+const brokerUrl = normalizeBrokerUrl(process.env.MQTT_BROKER_URL) || defaultBrokerUrl;
 const username = process.env.MQTT_USERNAME;
 const password = process.env.MQTT_PASSWORD;
 
@@ -38,22 +43,26 @@ const client = mqtt.connect(brokerUrl, {
 // Types for Frigate payloads
 interface FrigateEvent {
   type: 'new' | 'update' | 'end';
-  before?: {
-    box?: [number, number, number, number];
-    confidence?: number;
-    region?: [number, number, number, number];
+  before: {
+    id: string;
+    camera: string;
+    frame_time: number;
+    label: string;
+    top_score: number;
+    false_positive: boolean;
+    start_time: number;
+    end_time: number | null;
   };
-  after?: {
-    box?: [number, number, number, number];
-    confidence?: number;
-    region?: [number, number, number, number];
+  after: {
+    id: string;
+    camera: string;
+    frame_time: number;
+    label: string;
+    top_score: number;
+    false_positive: boolean;
+    start_time: number;
+    end_time: number | null;
   };
-  id: string;
-  camera: string;
-  label: string;
-  start_time: number;
-  end_time?: number;
-  zones?: string[];
 }
 
 interface FrigateReview {
@@ -68,57 +77,77 @@ interface FrigateReview {
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
 // Sample payloads
+const frameTime = Math.floor(Date.now() / 1000 * 1000);
 const eventNewPayload: FrigateEvent = {
   type: 'new',
   before: {
-    box: [100, 100, 200, 200],
-    confidence: 0.85,
-    region: [0, 0, 1920, 1080],
+    id: '1765399055.411563-pn9p44',
+    camera: 'webcam',
+    frame_time: frameTime,
+    label: 'person',
+    top_score: 0.85,
+    false_positive: false,
+    start_time: frameTime / 1000,
+    end_time: null,
   },
   after: {
-    box: [105, 105, 205, 205],
-    confidence: 0.87,
-    region: [0, 0, 1920, 1080],
+    id: '1765399055.411563-pn9p44',
+    camera: 'webcam',
+    frame_time: frameTime,
+    label: 'person',
+    top_score: 0.87,
+    false_positive: false,
+    start_time: frameTime / 1000,
+    end_time: null,
   },
-  id: '1765399055.411563-pn9p44',
-  camera: 'webcam',
-  label: 'person',
-  start_time: Date.now() / 1000,
-  zones: ['front_yard'],
 };
 
 const eventUpdatePayload: FrigateEvent = {
   type: 'update',
   before: {
-    box: [105, 105, 205, 205],
-    confidence: 0.87,
-    region: [0, 0, 1920, 1080],
+    id: '1765399055.411563-pn9p44',
+    camera: 'webcam',
+    frame_time: frameTime,
+    label: 'person',
+    top_score: 0.87,
+    false_positive: false,
+    start_time: frameTime / 1000,
+    end_time: null,
   },
   after: {
-    box: [110, 110, 210, 210],
-    confidence: 0.89,
-    region: [0, 0, 1920, 1080],
+    id: '1765399055.411563-pn9p44',
+    camera: 'webcam',
+    frame_time: frameTime + 100,
+    label: 'person',
+    top_score: 0.89,
+    false_positive: false,
+    start_time: frameTime / 1000,
+    end_time: null,
   },
-  id: '1765399055.411563-pn9p44',
-  camera: 'webcam',
-  label: 'person',
-  start_time: Date.now() / 1000,
-  zones: ['front_yard'],
 };
 
 const eventEndPayload: FrigateEvent = {
   type: 'end',
   before: {
-    box: [110, 110, 210, 210],
-    confidence: 0.89,
-    region: [0, 0, 1920, 1080],
+    id: '1765399055.411563-pn9p44',
+    camera: 'webcam',
+    frame_time: frameTime + 100,
+    label: 'person',
+    top_score: 0.89,
+    false_positive: false,
+    start_time: frameTime / 1000,
+    end_time: null,
   },
-  id: '1765399055.411563-pn9p44',
-  camera: 'webcam',
-  label: 'person',
-  start_time: Date.now() / 1000,
-  end_time: Date.now() / 1000 + 5,
-  zones: ['front_yard'],
+  after: {
+    id: '1765399055.411563-pn9p44',
+    camera: 'webcam',
+    frame_time: frameTime + 200,
+    label: 'person',
+    top_score: 0.88,
+    false_positive: false,
+    start_time: frameTime / 1000,
+    end_time: frameTime / 1000 + 5,
+  },
 };
 
 const reviewPayload: FrigateReview = {
@@ -142,7 +171,7 @@ async function publishTestEvents(): Promise<void> {
       try {
         // Publish event "new"
         console.log('📤 Publishing event "new"...');
-        client.publish('frigate/events', JSON.stringify(eventNewPayload), { qos: 1 }, (err) => {
+        client.publish(`frigate/events/${eventNewPayload.after.camera}`, JSON.stringify(eventNewPayload), { qos: 1 }, (err) => {
           if (err) {
             console.error('❌ Failed to publish event "new":', err.message);
           } else {
@@ -154,7 +183,7 @@ async function publishTestEvents(): Promise<void> {
 
         // Publish event "update"
         console.log('📤 Publishing event "update"...');
-        client.publish('frigate/events', JSON.stringify(eventUpdatePayload), { qos: 1 }, (err) => {
+        client.publish(`frigate/events/${eventUpdatePayload.after.camera}`, JSON.stringify(eventUpdatePayload), { qos: 1 }, (err) => {
           if (err) {
             console.error('❌ Failed to publish event "update":', err.message);
           } else {
@@ -166,19 +195,17 @@ async function publishTestEvents(): Promise<void> {
 
         // Publish event "end"
         console.log('📤 Publishing event "end"...');
-        client.publish('frigate/events', JSON.stringify(eventEndPayload), { qos: 1 }, (err) => {
+        client.publish(`frigate/events/${eventEndPayload.after.camera}`, JSON.stringify(eventEndPayload), { qos: 1 }, (err) => {
           if (err) {
             console.error('❌ Failed to publish event "end":', err.message);
           } else {
             console.log('✅ Event "end" published to frigate/events');
           }
-        });
+        });        await sleep(500);
 
-        await sleep(500);
-
-        // Publish review
-        console.log('📤 Publishing review...');
-        client.publish('frigate/reviews', JSON.stringify(reviewPayload), { qos: 1 }, (err) => {
+  // Publish review
+  console.log('📤 Publishing review...');
+  client.publish(`frigate/reviews/${reviewPayload.camera}`, JSON.stringify(reviewPayload), { qos: 1 }, (err) => {
           if (err) {
             console.error('❌ Failed to publish review:', err.message);
           } else {
