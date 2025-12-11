@@ -1,0 +1,41 @@
+{
+  "type": "update",
+  "before": {
+    "id": "1718987129.308396-fqk5ka",
+    "camera": "front_cam",
+    "start_time": 1718987129.308396,
+    "end_time": null,
+    "severity": "detection",
+    "thumb_path": "/media/frigate/clips/review/thumb-front_cam-1718987129.308396-fqk5ka.webp",
+    "data": {
+      "detections": [
+        "1718987128.947436-g92ztx",
+        "1718987148.879516-d7oq7r",
+        "1718987126.934663-q5ywpt"
+      ],
+      "objects": ["person", "car"],
+      "sub_labels": [],
+      "zones": [],
+      "audio": []
+    }
+  },
+  "after": {
+    "id": "1718987129.308396-fqk5ka",
+    "camera": "front_cam",
+    "start_time": 1718987129.308396,
+    "end_time": null,
+    "severity": "alert",
+    "thumb_path": "/media/frigate/clips/review/thumb-front_cam-1718987129.308396-fqk5ka.webp",
+    "data": {
+      "detections": [
+        "1718987128.947436-g92ztx",
+        "1718987148.879516-d7oq7r",
+        "1718987126.934663-q5ywpt"
+      ],
+      "objects": ["person", "car"],
+      "sub_labels": ["Bob"],
+      "zones": ["front_yard"],
+      "audio": []
+    }
+  }
+}
