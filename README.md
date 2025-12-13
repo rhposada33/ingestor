@@ -245,3 +245,5 @@ const recent = await dbService.getEventsByCamera(camera.id, 100);
 **Status**: ✅ Ready for Development
 
 Start with: `docker-compose up -d`
+
+npx tsx scripts/publish-payload.ts <topic> <file>

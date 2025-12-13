@@ -169,12 +169,13 @@ function handleIncomingMessage(topic: string, payload: string): void {
       let matches = false;
 
       // Wildcard matching for all topics (all use wildcard now)
+      // Match both "frigate/events" and "frigate/events/*" patterns
       if (handler.pattern === 'frigate/events/#') {
-        matches = topic.startsWith('frigate/events/');
+        matches = topic === 'frigate/events' || topic.startsWith('frigate/events/');
       } else if (handler.pattern === 'frigate/reviews/#') {
-        matches = topic.startsWith('frigate/reviews/');
+        matches = topic === 'frigate/reviews' || topic.startsWith('frigate/reviews/');
       } else if (handler.pattern === 'frigate/available/#') {
-        matches = topic.startsWith('frigate/available/');
+        matches = topic === 'frigate/available' || topic.startsWith('frigate/available/');
       }
 
       if (!matches) continue;

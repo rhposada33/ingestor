@@ -1,18 +1,6 @@
 version: '3.8'
 
 services:
-  mosquitto:
-    image: eclipse-mosquitto:latest
-    container_name: ingestor-mqtt
-    ports:
-      - "1883:1883"
-      - "9001:9001"
-    volumes:
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
-      - mosquitto_data:/mosquitto/data
-      - mosquitto_logs:/mosquitto/log
-    networks:
-      - ingestor-network
 
   postgres:
     image: postgres:16-alpine
@@ -41,17 +29,15 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       POSTGRES_URL: ${POSTGRES_URL:-postgres://postgres:postgres@postgres:5432/ingestor}
-      MQTT_BROKER_URL: ${MQTT_BROKER_URL:-mqtt://host.docker.internal:1883}
-      MQTT_USERNAME: ${MQTT_USERNAME:-}
-      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      MQTT_BROKER_URL: ${MQTT_BROKER_URL:-mqtt://mqtt:1883}
+      #MQTT_USERNAME: ${MQTT_USERNAME:-}
+     # MQTT_PASSWORD: ${MQTT_PASSWORD:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
-      mosquitto:
-        condition: service_started
     volumes:
       - .:/app
       - /app/node_modules
@@ -61,10 +47,6 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  mosquitto_data:
-    driver: local
-  mosquitto_logs:
     driver: local
 
 networks:
