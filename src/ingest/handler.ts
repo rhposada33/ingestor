@@ -67,46 +67,36 @@ export interface PersistedReview {
 /**
  * Resolve camera by name and get its tenant
  *
- * Since Frigate can be multi-instance, we use frigateId as tenant.
- * For single instance, frigateId is 'default'.
- *
- * @param frigateId Frigate instance ID (maps to tenant)
+ * @param tenantId Tenant ID to scope the camera lookup
  * @param cameraName Camera name from Frigate
  * @returns Camera with tenant info, or null if not found
  */
 async function resolveCameraByName(
-  frigateId: string,
+  tenantId: string,
   cameraName: string
 ): Promise<{ id: string; tenantId: string } | null> {
   try {
-    // First, find or create tenant for this Frigate instance
-    const tenant = await resolveTenantByFrigateId(frigateId);
-
-    if (!tenant) {
-      return null;
-    }
-
     // Then find camera by key (name) within tenant
     const camera = await prisma.camera.findUnique({
       where: {
-        tenantId_key: {
-          tenantId: tenant.id,
-          key: cameraName,
+        tenantId_frigateCameraKey: {
+          tenantId,
+          frigateCameraKey: cameraName,
         },
       },
     });
 
     if (!camera) {
       console.warn('Camera not found, auto-creating', {
-        frigateId,
+        tenantId,
         camera: cameraName,
       });
 
       // Auto-create camera if it doesn't exist
       const newCamera = await prisma.camera.create({
         data: {
-          tenantId: tenant.id,
-          key: cameraName,
+          tenantId,
+          frigateCameraKey: cameraName,
           label: cameraName,
         },
       });
@@ -122,7 +112,7 @@ async function resolveCameraByName(
       tenantId: camera.tenantId,
     };
   } catch (error) {
-    console.error('Error resolving camera', { frigateId, cameraName, error });
+    console.error('Error resolving camera', { tenantId, cameraName, error });
     return null;
   }
 }
@@ -130,10 +120,14 @@ async function resolveCameraByName(
 /**
  * Resolve or create tenant by Frigate instance ID
  */
-async function resolveTenantByFrigateId(
+async function resolveTenantId(
   frigateId: string
-): Promise<{ id: string } | null> {
+): Promise<string | null> {
   try {
+    if (process.env.TENANT_ID) {
+      return process.env.TENANT_ID;
+    }
+
     let tenant = await prisma.tenant.findUnique({
       where: { id: frigateId },
     });
@@ -148,7 +142,7 @@ async function resolveTenantByFrigateId(
       });
     }
 
-    return { id: tenant.id };
+    return tenant.id;
   } catch (error) {
     console.error('Error resolving tenant', { frigateId, error });
     return null;
@@ -248,7 +242,19 @@ export async function handleFrigateEvent(
 ): Promise<EventHandlerResult<PersistedEvent>> {
   try {
     // 1. Resolve camera
-    const camera = await resolveCameraByName(normalized.frigateId, normalized.camera);
+    const tenantId = await resolveTenantId(normalized.frigateId);
+
+    if (!tenantId) {
+      const error = `Failed to resolve tenant: ${normalized.frigateId}`;
+      console.warn(error, { frigateId: normalized.frigateId });
+      return {
+        success: false,
+        error,
+        reason: 'tenant_resolution_failed',
+      };
+    }
+
+    const camera = await resolveCameraByName(tenantId, normalized.camera);
 
     if (!camera) {
       const error = `Failed to resolve camera: ${normalized.camera}`;
@@ -360,7 +366,19 @@ export async function handleFrigateReview(
 ): Promise<EventHandlerResult<PersistedReview>> {
   try {
     // 1. Resolve camera
-    const camera = await resolveCameraByName(normalized.frigateId, normalized.camera);
+    const tenantId = await resolveTenantId(normalized.frigateId);
+
+    if (!tenantId) {
+      const error = `Failed to resolve tenant: ${normalized.frigateId}`;
+      console.warn(error, { frigateId: normalized.frigateId });
+      return {
+        success: false,
+        error,
+        reason: 'tenant_resolution_failed',
+      };
+    }
+
+    const camera = await resolveCameraByName(tenantId, normalized.camera);
 
     if (!camera) {
       const error = `Failed to resolve camera: ${normalized.camera}`;
@@ -456,9 +474,9 @@ export async function handleFrigateAvailability(
   normalized: NormalizedFrigateAvailable
 ): Promise<EventHandlerResult<{ frigateId: string; available: boolean }>> {
   try {
-    const tenant = await resolveTenantByFrigateId(normalized.frigateId);
+    const tenantId = await resolveTenantId(normalized.frigateId);
 
-    if (!tenant) {
+    if (!tenantId) {
       const error = `Failed to resolve tenant: ${normalized.frigateId}`;
       console.warn(error, { frigateId: normalized.frigateId });
       return {
@@ -470,7 +488,7 @@ export async function handleFrigateAvailability(
 
     await prisma.availabilityLog.create({
       data: {
-        tenantId: tenant.id,
+        tenantId,
         available: normalized.available,
         timestamp: new Date(normalized.timestamp * 1000),
         rawPayload: normalized.raw as any,
@@ -604,7 +622,7 @@ export async function safeFrigateEventHandler(
 
 export {
   resolveCameraByName,
-  resolveTenantByFrigateId,
+  resolveTenantId,
   createOrUpdateEvent,
 };
 

@@ -70,16 +70,16 @@ function createPrismaStub() {
   prismaAny.camera.findUnique = async ({
     where,
   }: {
-    where: { id?: string; tenantId_key?: { tenantId: string; key: string } };
+    where: { id?: string; tenantId_frigateCameraKey?: { tenantId: string; frigateCameraKey: string } };
   }) => {
     if (where.id) {
       return cameras.get(where.id) || null;
     }
-    if (where.tenantId_key) {
+    if (where.tenantId_frigateCameraKey) {
       for (const camera of cameras.values()) {
         if (
-          camera.tenantId === where.tenantId_key.tenantId &&
-          camera.key === where.tenantId_key.key
+          camera.tenantId === where.tenantId_frigateCameraKey.tenantId &&
+          camera.key === where.tenantId_frigateCameraKey.frigateCameraKey
         ) {
           return camera;
         }
@@ -91,12 +91,12 @@ function createPrismaStub() {
   prismaAny.camera.create = async ({
     data,
   }: {
-    data: { tenantId: string; key: string; label?: string | null };
+    data: { tenantId: string; frigateCameraKey: string; label?: string | null };
   }) => {
     const camera = {
       id: nextId(),
       tenantId: data.tenantId,
-      key: data.key,
+      key: data.frigateCameraKey,
       label: data.label ?? null,
     };
     cameras.set(camera.id, camera);

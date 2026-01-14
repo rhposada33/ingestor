@@ -15,6 +15,19 @@
 export type Tenant = {
   id: string;
   name: string;
+  description: string | null;
+  createdAt: Date;
+};
+
+/**
+ * User type - represents a row in the users table
+ */
+export type User = {
+  id: string;
+  email: string;
+  password: string;
+  isAdmin: boolean;
+  tenantId: string;
   createdAt: Date;
 };
 
@@ -24,8 +37,9 @@ export type Tenant = {
 export type Camera = {
   id: string;
   tenantId: string;
-  key: string;
+  frigateCameraKey: string;
   label: string | null;
+  isEnabled: boolean;
   createdAt: Date;
 };
 
@@ -83,6 +97,7 @@ export type AvailabilityLog = {
  * Tenant with all relations
  */
 export type TenantWithRelations = Tenant & {
+  users: User[];
   cameras: Camera[];
   events: Event[];
   reviews: Review[];

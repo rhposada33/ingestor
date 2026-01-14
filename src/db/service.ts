@@ -44,7 +44,7 @@ export class DatabaseService {
     return await prisma.camera.create({
       data: {
         tenantId,
-        key,
+        frigateCameraKey: key,
         label,
       },
     });

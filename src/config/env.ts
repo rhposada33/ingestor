@@ -9,12 +9,13 @@ export interface EnvironmentConfig {
     password: string | null;
   };
   database: {
-    postgresUrl: string;
+    databaseUrl: string;
   };
   logging: {
     logLevel: 'debug' | 'info' | 'warn' | 'error';
   };
   nodeEnv: 'development' | 'production' | 'test';
+  tenantId: string | null;
 }
 
 /**
@@ -82,6 +83,26 @@ function getLogLevel(value: string): 'debug' | 'info' | 'warn' | 'error' {
  */
 export function loadEnvironmentVariables(): EnvironmentConfig {
   try {
+    const databaseUrl =
+      getOptionalEnvVar('DATABASE_URL') ||
+      getOptionalEnvVar('POSTGRES_URL');
+
+    if (!databaseUrl) {
+      throw new Error(
+        'Missing required environment variable: DATABASE_URL. ' +
+          'Please set it in your .env file or as an environment variable.'
+      );
+    }
+
+    try {
+      new URL(databaseUrl);
+    } catch {
+      throw new Error(
+        `Invalid URL for DATABASE_URL: "${databaseUrl}". ` +
+          'Please provide a valid URL (e.g., postgres://user:pass@host/db)'
+      );
+    }
+
     const config: EnvironmentConfig = {
       mqtt: {
         brokerUrl: getRequiredUrlEnvVar('MQTT_BROKER_URL'),
@@ -89,13 +110,14 @@ export function loadEnvironmentVariables(): EnvironmentConfig {
         password: getOptionalEnvVar('MQTT_PASSWORD'),
       },
       database: {
-        postgresUrl: getRequiredUrlEnvVar('POSTGRES_URL'),
+        databaseUrl,
       },
       logging: {
         logLevel: getLogLevel(getOptionalEnvVar('LOG_LEVEL', 'info') || 'info'),
       },
       nodeEnv: (process.env.NODE_ENV as 'development' | 'production' | 'test') ||
         'development',
+      tenantId: getOptionalEnvVar('TENANT_ID'),
     };
 
     return config;

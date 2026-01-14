@@ -23,10 +23,11 @@ The ingestor service uses a strongly-typed configuration system based on environ
 
 ### Database Configuration (Required)
 
-- **`POSTGRES_URL`** - PostgreSQL connection string
+- **`DATABASE_URL`** - PostgreSQL connection string
   - Format: `postgres://user:password@host:port/database`
-  - Example: `postgres://postgres:postgres@localhost:5432/ingestor`
+  - Example: `postgres://postgres:postgres@localhost:5432/sateliteyes_saas`
   - Required: ✅ Yes
+  - Fallback: `POSTGRES_URL` (legacy)
 
 ### Application Configuration (Optional)
 
@@ -38,6 +39,10 @@ The ingestor service uses a strongly-typed configuration system based on environ
 - **`NODE_ENV`** - Node environment
   - Valid values: `development`, `production`, `test`
   - Default: `development`
+  - Required: ❌ No (optional)
+
+- **`TENANT_ID`** - Tenant ID to attach ingested events to
+  - Example: `cldu4v9qj0001qz8r8j8r8r8j`
   - Required: ❌ No (optional)
 
 ## Setup
@@ -52,9 +57,10 @@ cp .env.example .env
 MQTT_BROKER_URL=mqtt://your-broker:1883
 MQTT_USERNAME=your-username
 MQTT_PASSWORD=your-password
-POSTGRES_URL=postgres://user:pass@localhost:5432/ingestor
+DATABASE_URL=postgres://user:pass@localhost:5432/sateliteyes_saas
 LOG_LEVEL=info
 NODE_ENV=development
+TENANT_ID=your-tenant-id
 ```
 
 ## Validation
@@ -104,7 +110,7 @@ const config = configManager.getConfig();
 
 // Access configuration
 const brokerUrl = config.env.mqtt.brokerUrl;
-const postgresUrl = config.env.database.postgresUrl;
+const databaseUrl = config.env.database.databaseUrl;
 const logLevel = config.env.logging.logLevel;
 ```
 
