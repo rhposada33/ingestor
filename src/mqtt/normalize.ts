@@ -263,7 +263,18 @@ function toBoolean(value: unknown): boolean {
   if (typeof value === 'boolean') {
     return value;
   }
-  if (value === 'true' || value === '1' || value === 1) {
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'yes', 'y'].includes(normalized)) {
+      return true;
+    }
+    if (['false', '0', 'no', 'n', ''].includes(normalized)) {
+      return false;
+    }
+    // Non-empty string (e.g., file path) should be treated as truthy
+    return true;
+  }
+  if (value === 1) {
     return true;
   }
   return false;
@@ -337,12 +348,25 @@ export function normalizeEventMessage(
     return null;
   }
 
+  const before_data = safeGet<Record<string, unknown>>(payload, 'before');
+  const after_data = safeGet<Record<string, unknown>>(payload, 'after');
+
   // Extract snapshot and clip availability
   // Handle both old (snapshot/clip booleans) and new (has_snapshot/has_clip) formats
   const hasSnapshot =
-    toBoolean(safeGet(payload, 'snapshot')) || toBoolean(safeGet(payload, 'has_snapshot'));
+    toBoolean(safeGet(payload, 'snapshot')) ||
+    toBoolean(safeGet(payload, 'has_snapshot')) ||
+    toBoolean(safeGet(before_data, 'snapshot')) ||
+    toBoolean(safeGet(before_data, 'has_snapshot')) ||
+    toBoolean(safeGet(after_data, 'snapshot')) ||
+    toBoolean(safeGet(after_data, 'has_snapshot'));
   const hasClip =
-    toBoolean(safeGet(payload, 'clip')) || toBoolean(safeGet(payload, 'has_clip'));
+    toBoolean(safeGet(payload, 'clip')) ||
+    toBoolean(safeGet(payload, 'has_clip')) ||
+    toBoolean(safeGet(before_data, 'clip')) ||
+    toBoolean(safeGet(before_data, 'has_clip')) ||
+    toBoolean(safeGet(after_data, 'clip')) ||
+    toBoolean(safeGet(after_data, 'has_clip'));
 
   // Extract timestamps
   // Handle formats: start_time, startTime, unix seconds, milliseconds
@@ -358,9 +382,6 @@ export function normalizeEventMessage(
   if (rawEndTime !== null) {
     endTime = toNumber(rawEndTime);
   }
-
-  const before_data = safeGet<Record<string, unknown>>(payload, 'before');
-  const after_data = safeGet<Record<string, unknown>>(payload, 'after');
 
   const label =
     safeGet<string>(payload, 'label') ||

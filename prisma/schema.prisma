@@ -63,6 +63,9 @@ model Event {
   frigateId  String // event_id from MQTT
   type       String
   label      String?
+  status     String @default("unresolved")
+  acknowledgedAt DateTime?
+  resolvedAt DateTime?
   hasSnapshot Boolean @default(false)
   hasClip     Boolean @default(false)
   startTime   Float?
