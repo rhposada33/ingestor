@@ -143,7 +143,7 @@ export async function shutdownMqttSubsystem() {
  * ```
  */
 export function onFrigateEvent(
-  callback: (event: any) => void | Promise<void>
+  callback: (event: any, topic: string) => void | Promise<void>
 ): void {
   ingestorBus.onFrigateEvent(callback);
 }
@@ -167,7 +167,7 @@ export function onFrigateEvent(
  * ```
  */
 export function onFrigateReview(
-  callback: (review: any) => void | Promise<void>
+  callback: (review: any, topic: string) => void | Promise<void>
 ): void {
   ingestorBus.onFrigateReview(callback);
 }
@@ -191,7 +191,7 @@ export function onFrigateReview(
  * ```
  */
 export function onFrigateAvailable(
-  callback: (status: any) => void | Promise<void>
+  callback: (status: any, topic: string) => void | Promise<void>
 ): void {
   ingestorBus.onFrigateAvailable(callback);
 }

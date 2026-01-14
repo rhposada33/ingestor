@@ -18,7 +18,8 @@
     "db:push": "prisma db push",
     "test:publish": "tsx scripts/publish-test-event.ts",
     "test:verify": "tsx scripts/verify-db.ts",
-    "test:ingest": "tsx scripts/test-ingest.ts"
+    "test:ingest": "tsx scripts/test-ingest.ts",
+    "test": "tsx --test test/*.test.ts"
   },
   "keywords": [
     "mqtt",

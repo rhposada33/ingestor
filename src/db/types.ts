@@ -47,6 +47,34 @@ export type Event = {
   createdAt: Date;
 };
 
+/**
+ * Review type - represents a row in the reviews table
+ */
+export type Review = {
+  id: string;
+  tenantId: string;
+  cameraId: string;
+  reviewId: string;
+  cameraName: string;
+  severity: string;
+  retracted: boolean;
+  timestamp: Date | null;
+  rawPayload: Record<string, unknown>;
+  createdAt: Date;
+};
+
+/**
+ * AvailabilityLog type - represents a row in the availability_logs table
+ */
+export type AvailabilityLog = {
+  id: string;
+  tenantId: string;
+  available: boolean;
+  timestamp: Date;
+  rawPayload: Record<string, unknown>;
+  createdAt: Date;
+};
+
 // ==============================================================================
 // EXTENDED TYPES WITH RELATIONS
 // ==============================================================================
@@ -57,6 +85,8 @@ export type Event = {
 export type TenantWithRelations = Tenant & {
   cameras: Camera[];
   events: Event[];
+  reviews: Review[];
+  availabilityLogs: AvailabilityLog[];
 };
 
 /**
@@ -65,6 +95,7 @@ export type TenantWithRelations = Tenant & {
 export type CameraWithRelations = Camera & {
   tenant: Tenant;
   events: Event[];
+  reviews: Review[];
 };
 
 /**
@@ -73,6 +104,21 @@ export type CameraWithRelations = Camera & {
 export type EventWithRelations = Event & {
   tenant: Tenant;
   camera: Camera;
+};
+
+/**
+ * Review with all relations
+ */
+export type ReviewWithRelations = Review & {
+  tenant: Tenant;
+  camera: Camera;
+};
+
+/**
+ * AvailabilityLog with all relations
+ */
+export type AvailabilityLogWithRelations = AvailabilityLog & {
+  tenant: Tenant;
 };
 
 // ==============================================================================

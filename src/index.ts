@@ -9,8 +9,8 @@ import { ConfigManager } from './config/ConfigManager.js';
 import { connectDatabase, disconnectDatabase } from './db/client.js';
 import { initializeMqttSubsystem, shutdownMqttSubsystem, ingestorBus } from './mqtt/index.js';
 import { normalizeMessage } from './mqtt/normalize.js';
-import { handleFrigateEvent, handleFrigateReview } from './ingest/handler.js';
-import type { FrigateEvent, FrigateReview } from './mqtt/bus.js';
+import { handleFrigateEvent, handleFrigateReview, handleFrigateAvailability } from './ingest/handler.js';
+import type { FrigateEvent, FrigateReview, FrigateAvailable } from './mqtt/bus.js';
 
 /**
  * Main ingestion loop
@@ -65,18 +65,17 @@ const main = async (): Promise<void> => {
     console.log('\n⚡ Setting up event handlers...');
 
     // Handle Frigate detection events
-    ingestorBus.onFrigateEvent(async (rawEvent: FrigateEvent) => {
+    ingestorBus.onFrigateEvent(async (rawEvent: FrigateEvent, topic: string) => {
       try {
-        // Normalize the raw event from MQTT
-        // Topic should be in format: frigate/events/<camera>
-        const camera = rawEvent.after?.camera || rawEvent.before?.camera || 'unknown';
-        const normalized = normalizeMessage(rawEvent, `frigate/events/${camera}`);
+        // Normalize the raw event from MQTT using the actual topic
+        const normalized = normalizeMessage(rawEvent, topic);
 
         if (!normalized) {
           console.warn('⚠️  Failed to normalize Frigate event:', {
-            camera: rawEvent.after.camera,
-            eventId: rawEvent.after.id,
+            camera: rawEvent.after?.camera || rawEvent.before?.camera,
+            eventId: rawEvent.after?.id || rawEvent.before?.id,
             type: rawEvent.type,
+            topic,
           });
           return;
         }
@@ -92,15 +91,17 @@ const main = async (): Promise<void> => {
 
         if (result.success) {
           console.log('✓ Event persisted', {
-            eventId: result.data?.frigateId,
-            camera: result.data?.cameraId,
+            dbEventId: result.data?.id,
+            frigateEventId: result.data?.frigateId,
+            cameraId: result.data?.cameraId,
             type: result.data?.type,
           });
         } else {
           console.warn('⚠️  Event handler failed:', {
             error: result.error,
             reason: result.reason,
-            eventId: rawEvent.after.id,
+            eventId: rawEvent.after?.id || rawEvent.before?.id,
+            topic,
           });
         }
       } catch (error) {
@@ -109,16 +110,17 @@ const main = async (): Promise<void> => {
     });
 
     // Handle Frigate review events
-    ingestorBus.onFrigateReview(async (rawReview: FrigateReview) => {
+    ingestorBus.onFrigateReview(async (rawReview: FrigateReview, topic: string) => {
       try {
-        // Normalize the raw review from MQTT
-        const normalized = normalizeMessage(rawReview, `frigate/${rawReview.camera}/reviews`);
+        // Normalize the raw review from MQTT using the actual topic
+        const normalized = normalizeMessage(rawReview, topic);
 
         if (!normalized) {
           console.warn('⚠️  Failed to normalize review event:', {
             camera: rawReview.camera,
             reviewId: rawReview.id,
             severity: rawReview.severity,
+            topic,
           });
           return;
         }
@@ -135,7 +137,7 @@ const main = async (): Promise<void> => {
         if (result.success) {
           console.log('✓ Review persisted', {
             reviewId: result.data?.reviewId,
-            camera: result.data?.camera,
+            camera: result.data?.cameraName,
             severity: result.data?.severity,
           });
         } else {
@@ -143,10 +145,48 @@ const main = async (): Promise<void> => {
             error: result.error,
             reason: result.reason,
             reviewId: rawReview.id,
+            topic,
           });
         }
       } catch (error) {
         console.error('❌ Unexpected error in review handler:', error);
+      }
+    });
+
+    // Handle Frigate availability events
+    ingestorBus.onFrigateAvailable(async (rawAvailable: FrigateAvailable, topic: string) => {
+      try {
+        const normalized = normalizeMessage(rawAvailable, topic);
+
+        if (!normalized) {
+          console.warn('⚠️  Failed to normalize availability status:', {
+            available: rawAvailable.available,
+            topic,
+          });
+          return;
+        }
+
+        if (!('available' in normalized)) {
+          console.warn('⚠️  Received non-availability message in onFrigateAvailable handler');
+          return;
+        }
+
+        const result = await handleFrigateAvailability(normalized);
+
+        if (result.success) {
+          console.log('✓ Availability persisted', {
+            frigateId: result.data?.frigateId,
+            available: result.data?.available,
+          });
+        } else {
+          console.warn('⚠️  Availability handler failed:', {
+            error: result.error,
+            reason: result.reason,
+            topic,
+          });
+        }
+      } catch (error) {
+        console.error('❌ Unexpected error in availability handler:', error);
       }
     });
 

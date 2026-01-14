@@ -187,7 +187,7 @@ function extractFrigateId(topic: string): string {
 /**
  * Extract camera name from MQTT topic
  *
- * Topics follow pattern: frigate/[id/]events/<camera>
+ * Topics follow pattern: frigate/[id/]events/<camera> or frigate/[id/]reviews/<camera>
  *
  * @param topic MQTT topic path
  * @returns Camera name or 'unknown'
@@ -198,6 +198,13 @@ function extractCameraFromTopic(topic: string): string {
   // Format: frigate/events/<camera> or frigate/<id>/events/<camera>
   for (let i = 0; i < parts.length; i++) {
     if (parts[i] === 'events' && parts[i + 1]) {
+      return parts[i + 1];
+    }
+  }
+
+  // Format: frigate/reviews/<camera> or frigate/<id>/reviews/<camera>
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] === 'reviews' && parts[i + 1]) {
       return parts[i + 1];
     }
   }
@@ -316,9 +323,13 @@ export function normalizeEventMessage(
 
   // Extract required fields with fallbacks
   const type = safeGet<string>(payload, 'type');
-  const label = safeGet<string>(payload, 'label') || 'unknown';
   const frigateId = extractFrigateId(topic);
-  const camera = extractCameraFromTopic(topic);
+  const cameraFromTopic = extractCameraFromTopic(topic);
+  const cameraFromPayload =
+    safeGet<string>(payload, 'camera') ||
+    safeGet<string>(safeGet<Record<string, unknown>>(payload, 'after'), 'camera') ||
+    safeGet<string>(safeGet<Record<string, unknown>>(payload, 'before'), 'camera');
+  const camera = cameraFromTopic !== 'unknown' ? cameraFromTopic : cameraFromPayload || 'unknown';
 
   // Validate event type
   if (!type || !['new', 'update', 'end'].includes(type)) {
@@ -348,10 +359,16 @@ export function normalizeEventMessage(
     endTime = toNumber(rawEndTime);
   }
 
-  // Extract event ID from before or after
   const before_data = safeGet<Record<string, unknown>>(payload, 'before');
   const after_data = safeGet<Record<string, unknown>>(payload, 'after');
-  
+
+  const label =
+    safeGet<string>(payload, 'label') ||
+    safeGet<string>(before_data, 'label') ||
+    safeGet<string>(after_data, 'label') ||
+    'unknown';
+
+  // Extract event ID from before or after
   const eventId = safeGet<string>(payload, 'id') ||
     safeGet<string>(before_data, 'id') ||
     safeGet<string>(after_data, 'id') ||
@@ -457,7 +474,10 @@ export function normalizeReviewMessage(
   const reviewId = safeGet<string>(payload, 'id');
   const severity = safeGet<string>(payload, 'severity');
   const frigateId = extractFrigateId(topic);
-  const camera = extractCameraFromTopic(topic);
+  const cameraFromTopic = extractCameraFromTopic(topic);
+  const camera = cameraFromTopic !== 'unknown'
+    ? cameraFromTopic
+    : safeGet<string>(payload, 'camera') || 'unknown';
 
   // Validate required fields
   if (!reviewId) {
@@ -601,15 +621,15 @@ export function normalizeMessage(
   }
 
   try {
-    if (topic.includes('/events/')) {
+    if (topic === 'frigate/events' || topic.includes('/events/')) {
       return normalizeEventMessage(rawPayload, topic);
     }
 
-    if (topic.includes('/reviews')) {
+    if (topic === 'frigate/reviews' || topic.includes('/reviews')) {
       return normalizeReviewMessage(rawPayload, topic);
     }
 
-    if (topic.includes('/available')) {
+    if (topic === 'frigate/available' || topic.includes('/available')) {
       return normalizeAvailabilityMessage(rawPayload, topic);
     }
 

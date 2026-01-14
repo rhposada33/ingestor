@@ -54,84 +54,84 @@ export class IngestorBus extends EventEmitter {
   /**
    * Emit a Frigate event
    */
-  emitFrigateEvent(event: FrigateEvent): boolean {
-    return this.emit('frigate:event', event);
+  emitFrigateEvent(event: FrigateEvent, topic: string): boolean {
+    return this.emit('frigate:event', event, topic);
   }
 
   /**
    * Emit a Frigate review
    */
-  emitFrigateReview(review: FrigateReview): boolean {
-    return this.emit('frigate:review', review);
+  emitFrigateReview(review: FrigateReview, topic: string): boolean {
+    return this.emit('frigate:review', review, topic);
   }
 
   /**
    * Emit a Frigate availability status
    */
-  emitFrigateAvailable(available: FrigateAvailable): boolean {
-    return this.emit('frigate:available', available);
+  emitFrigateAvailable(available: FrigateAvailable, topic: string): boolean {
+    return this.emit('frigate:available', available, topic);
   }
 
   /**
    * Listen for Frigate events
    */
-  onFrigateEvent(listener: (event: FrigateEvent) => void): this {
+  onFrigateEvent(listener: (event: FrigateEvent, topic: string) => void): this {
     return this.on('frigate:event', listener);
   }
 
   /**
    * Listen for Frigate reviews
    */
-  onFrigateReview(listener: (review: FrigateReview) => void): this {
+  onFrigateReview(listener: (review: FrigateReview, topic: string) => void): this {
     return this.on('frigate:review', listener);
   }
 
   /**
    * Listen for Frigate availability
    */
-  onFrigateAvailable(listener: (available: FrigateAvailable) => void): this {
+  onFrigateAvailable(listener: (available: FrigateAvailable, topic: string) => void): this {
     return this.on('frigate:available', listener);
   }
 
   /**
    * Remove listener for Frigate events
    */
-  offFrigateEvent(listener: (event: FrigateEvent) => void): this {
+  offFrigateEvent(listener: (event: FrigateEvent, topic: string) => void): this {
     return this.off('frigate:event', listener);
   }
 
   /**
    * Remove listener for Frigate reviews
    */
-  offFrigateReview(listener: (review: FrigateReview) => void): this {
+  offFrigateReview(listener: (review: FrigateReview, topic: string) => void): this {
     return this.off('frigate:review', listener);
   }
 
   /**
    * Remove listener for Frigate availability
    */
-  offFrigateAvailable(listener: (available: FrigateAvailable) => void): this {
+  offFrigateAvailable(listener: (available: FrigateAvailable, topic: string) => void): this {
     return this.off('frigate:available', listener);
   }
 
   /**
    * Listen once for Frigate event
    */
-  onceFrigateEvent(listener: (event: FrigateEvent) => void): this {
+  onceFrigateEvent(listener: (event: FrigateEvent, topic: string) => void): this {
     return this.once('frigate:event', listener);
   }
 
   /**
    * Listen once for Frigate review
    */
-  onceFrigateReview(listener: (review: FrigateReview) => void): this {
+  onceFrigateReview(listener: (review: FrigateReview, topic: string) => void): this {
     return this.once('frigate:review', listener);
   }
 
   /**
    * Listen once for Frigate availability
    */
-  onceFrigateAvailable(listener: (available: FrigateAvailable) => void): this {
+  onceFrigateAvailable(listener: (available: FrigateAvailable, topic: string) => void): this {
     return this.once('frigate:available', listener);
   }
 }

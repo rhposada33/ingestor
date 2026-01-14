@@ -54,10 +54,10 @@ export interface PersistedReview {
   id: string;
   tenantId: string;
   reviewId: string;
-  camera: string;
+  cameraName: string;
   severity: string;
   retracted: boolean;
-  timestamp?: number | null;
+  timestamp?: Date | null;
   rawPayload: Record<string, unknown>;
   createdAt: Date;
 }
@@ -80,19 +80,10 @@ async function resolveCameraByName(
 ): Promise<{ id: string; tenantId: string } | null> {
   try {
     // First, find or create tenant for this Frigate instance
-    let tenant = await prisma.tenant.findUnique({
-      where: { id: frigateId },
-    });
+    const tenant = await resolveTenantByFrigateId(frigateId);
 
     if (!tenant) {
-      // Auto-create tenant for new Frigate instance
-      console.info('Creating new tenant for Frigate instance', { frigateId });
-      tenant = await prisma.tenant.create({
-        data: {
-          id: frigateId,
-          name: `Frigate ${frigateId}`,
-        },
-      });
+      return null;
     }
 
     // Then find camera by key (name) within tenant
@@ -136,6 +127,33 @@ async function resolveCameraByName(
   }
 }
 
+/**
+ * Resolve or create tenant by Frigate instance ID
+ */
+async function resolveTenantByFrigateId(
+  frigateId: string
+): Promise<{ id: string } | null> {
+  try {
+    let tenant = await prisma.tenant.findUnique({
+      where: { id: frigateId },
+    });
+
+    if (!tenant) {
+      console.info('Creating new tenant for Frigate instance', { frigateId });
+      tenant = await prisma.tenant.create({
+        data: {
+          id: frigateId,
+          name: `Frigate ${frigateId}`,
+        },
+      });
+    }
+
+    return { id: tenant.id };
+  } catch (error) {
+    console.error('Error resolving tenant', { frigateId, error });
+    return null;
+  }
+}
 /**
  * Create or update event in database
  *
@@ -191,8 +209,8 @@ async function createOrUpdateEvent(
       label: label || undefined,
       hasSnapshot,
       hasClip,
-      startTime: startTime || undefined,
-      endTime: endTime || undefined,
+      startTime: startTime ?? undefined,
+      endTime: endTime ?? undefined,
       rawPayload: rawPayload as any,
     },
   });
@@ -278,19 +296,11 @@ export async function handleFrigateEvent(
           label: normalized.label,
           hasSnapshot: normalized.hasSnapshot,
           hasClip: normalized.hasClip,
-          startTime: normalized.startTime || undefined,
-          endTime: normalized.endTime || undefined,
+          startTime: normalized.startTime ?? undefined,
+          endTime: normalized.endTime ?? undefined,
           rawPayload: normalized.raw as any,
         },
       });
-    });
-
-    console.info('Event persisted', {
-      eventId: event.id,
-      frigateId: event.frigateId,
-      camera: normalized.camera,
-      type: normalized.type,
-      label: normalized.label,
     });
 
     return {
@@ -362,37 +372,46 @@ export async function handleFrigateReview(
       };
     }
 
-    // 2-4. Store review within transaction
-    // @todo Once Review model is added to schema, implement storage here
-    const review = await prisma.$transaction(async () => {
-      // For now, log the review metadata
-      // This will be replaced with actual storage once Review model exists
+    const timestamp = normalized.timestamp
+      ? new Date(normalized.timestamp * 1000)
+      : null;
 
-      console.info('Review received', {
-        reviewId: normalized.reviewId,
-        frigateId: normalized.frigateId,
-        camera: normalized.camera,
-        severity: normalized.severity,
-        retracted: normalized.retracted,
-      });
-
-      // Return structured review record
-      return {
-        id: normalized.reviewId,
+    const review = await prisma.review.upsert({
+      where: {
+        tenantId_reviewId: {
+          tenantId: camera.tenantId,
+          reviewId: normalized.reviewId,
+        },
+      },
+      create: {
         tenantId: camera.tenantId,
+        cameraId: camera.id,
         reviewId: normalized.reviewId,
-        camera: normalized.camera,
+        cameraName: normalized.camera,
         severity: normalized.severity,
         retracted: normalized.retracted,
-        timestamp: normalized.timestamp,
-        rawPayload: normalized.raw,
-        createdAt: new Date(),
-      } as PersistedReview;
+        timestamp,
+        rawPayload: normalized.raw as any,
+      },
+      update: {
+        severity: normalized.severity,
+        retracted: normalized.retracted,
+        timestamp: timestamp ?? undefined,
+        rawPayload: normalized.raw as any,
+      },
+    });
+
+    console.info('Review persisted', {
+      reviewId: review.reviewId,
+      frigateId: normalized.frigateId,
+      camera: normalized.camera,
+      severity: normalized.severity,
+      retracted: normalized.retracted,
     });
 
     return {
       success: true,
-      data: review,
+      data: review as PersistedReview,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -437,7 +456,26 @@ export async function handleFrigateAvailability(
   normalized: NormalizedFrigateAvailable
 ): Promise<EventHandlerResult<{ frigateId: string; available: boolean }>> {
   try {
-    // @todo Implement availability tracking once schema is extended
+    const tenant = await resolveTenantByFrigateId(normalized.frigateId);
+
+    if (!tenant) {
+      const error = `Failed to resolve tenant: ${normalized.frigateId}`;
+      console.warn(error, { frigateId: normalized.frigateId });
+      return {
+        success: false,
+        error,
+        reason: 'tenant_resolution_failed',
+      };
+    }
+
+    await prisma.availabilityLog.create({
+      data: {
+        tenantId: tenant.id,
+        available: normalized.available,
+        timestamp: new Date(normalized.timestamp * 1000),
+        rawPayload: normalized.raw as any,
+      },
+    });
 
     console.info('Frigate availability', {
       frigateId: normalized.frigateId,
@@ -566,6 +604,7 @@ export async function safeFrigateEventHandler(
 
 export {
   resolveCameraByName,
+  resolveTenantByFrigateId,
   createOrUpdateEvent,
 };
 

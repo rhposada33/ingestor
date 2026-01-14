@@ -183,7 +183,7 @@ function handleIncomingMessage(topic: string, payload: string): void {
       // Parse and emit
       try {
         const data = handler.parser(payload);
-        const emitted = ingestorBus.emit(handler.eventName, data);
+        const emitted = ingestorBus.emit(handler.eventName, data, topic);
 
         if (emitted) {
           console.log(`📨 Emitted ${handler.eventName} from topic: ${topic}`);
