@@ -28,13 +28,14 @@ services:
     container_name: ingestor-app
     environment:
       NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@postgres:5432/ingestor}
       POSTGRES_URL: ${POSTGRES_URL:-postgres://postgres:postgres@postgres:5432/ingestor}
       MQTT_BROKER_URL: ${MQTT_BROKER_URL:-mqtt://mqtt:1883}
       #MQTT_USERNAME: ${MQTT_USERNAME:-}
      # MQTT_PASSWORD: ${MQTT_PASSWORD:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       postgres:
         condition: service_healthy

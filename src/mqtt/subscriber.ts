@@ -71,13 +71,45 @@ function parseFrigateReview(payload: string): FrigateReview {
  * Handles parsing and validation of Frigate availability
  */
 function parseFrigateAvailable(payload: string): FrigateAvailable {
+  const trimmed = payload.trim().toLowerCase();
+
+  // Frigate can send plain strings like "online"/"offline" or "true"/"false"
+  if (trimmed === 'online' || trimmed === 'true' || trimmed === '1') {
+    return { available: true };
+  }
+
+  if (trimmed === 'offline' || trimmed === 'false' || trimmed === '0') {
+    return { available: false };
+  }
+
   try {
     const data = JSON.parse(payload);
-    // Basic validation that required fields exist
-    if (data.available === undefined) {
+    const available =
+      data?.available !== undefined
+        ? data.available
+        : data?.online !== undefined
+          ? data.online
+          : undefined;
+
+    if (available === undefined) {
       throw new Error('Invalid Frigate availability structure');
     }
-    return data as FrigateAvailable;
+
+    if (typeof available === 'boolean') {
+      return { available };
+    }
+
+    if (typeof available === 'string') {
+      const normalized = available.trim().toLowerCase();
+      if (['true', 'online', '1', 'yes', 'y'].includes(normalized)) {
+        return { available: true };
+      }
+      if (['false', 'offline', '0', 'no', 'n'].includes(normalized)) {
+        return { available: false };
+      }
+    }
+
+    throw new Error('Invalid Frigate availability value');
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error(`Invalid JSON in Frigate availability: ${error.message}`);
