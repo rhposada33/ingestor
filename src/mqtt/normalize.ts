@@ -492,13 +492,24 @@ export function normalizeReviewMessage(
   const payload = rawPayload as Record<string, unknown>;
 
   // Extract required fields
-  const reviewId = safeGet<string>(payload, 'id');
-  const severity = safeGet<string>(payload, 'severity');
+  const beforeData = safeGet<Record<string, unknown>>(payload, 'before');
+  const afterData = safeGet<Record<string, unknown>>(payload, 'after');
+  const reviewId =
+    safeGet<string>(payload, 'id') ||
+    safeGet<string>(beforeData, 'id') ||
+    safeGet<string>(afterData, 'id');
+  const severity =
+    safeGet<string>(payload, 'severity') ||
+    safeGet<string>(beforeData, 'severity') ||
+    safeGet<string>(afterData, 'severity');
   const frigateId = extractFrigateId(topic);
   const cameraFromTopic = extractCameraFromTopic(topic);
   const camera = cameraFromTopic !== 'unknown'
     ? cameraFromTopic
-    : safeGet<string>(payload, 'camera') || 'unknown';
+    : safeGet<string>(payload, 'camera') ||
+      safeGet<string>(beforeData, 'camera') ||
+      safeGet<string>(afterData, 'camera') ||
+      'unknown';
 
   // Validate required fields
   if (!reviewId) {

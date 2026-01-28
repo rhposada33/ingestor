@@ -54,10 +54,25 @@ function parseFrigateEvent(payload: string): FrigateEvent {
 function parseFrigateReview(payload: string): FrigateReview {
   try {
     const data = JSON.parse(payload);
-    // Basic validation that required fields exist
-    if (!data.id || !data.camera || data.severity === undefined) {
-      throw new Error('Invalid Frigate review structure');
+
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid Frigate review payload');
     }
+
+    const before = (data as any).before;
+    const after = (data as any).after;
+
+    // Some Frigate versions send reviews wrapped in before/after objects
+    if (!(data as any).id && (before?.id || after?.id)) {
+      (data as any).id = before?.id ?? after?.id;
+    }
+    if (!(data as any).camera && (before?.camera || after?.camera)) {
+      (data as any).camera = before?.camera ?? after?.camera;
+    }
+    if ((data as any).severity === undefined && (before?.severity || after?.severity)) {
+      (data as any).severity = before?.severity ?? after?.severity;
+    }
+
     return data as FrigateReview;
   } catch (error) {
     if (error instanceof SyntaxError) {
