@@ -87,6 +87,16 @@ async function resolveCameraByName(
     });
 
     if (!camera) {
+      const allowAutoCreate = String(process.env.AUTO_CREATE_CAMERAS || '').toLowerCase() === 'true';
+
+      if (!allowAutoCreate) {
+        console.warn('Camera not found and auto-create disabled', {
+          tenantId,
+          camera: cameraName,
+        });
+        return null;
+      }
+
       console.warn('Camera not found, auto-creating', {
         tenantId,
         camera: cameraName,
