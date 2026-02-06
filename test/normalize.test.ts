@@ -76,3 +76,20 @@ test('normalizeMessage routes based on topic', () => {
   assert.ok(result);
   assert.equal('type' in result, true);
 });
+
+test('normalizeEventMessage extracts sub_label from before/after payloads', () => {
+  const payload = {
+    type: 'end',
+    label: 'person',
+    after: {
+      id: 'evt-3',
+      camera: 'front',
+      sub_label: ['Julian', 0.995],
+    },
+  };
+
+  const result = normalizeEventMessage(payload, 'frigate/events/front');
+
+  assert.ok(result);
+  assert.equal(result.subLabel, 'Julian');
+});

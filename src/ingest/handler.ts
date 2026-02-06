@@ -39,6 +39,7 @@ export interface PersistedEvent {
   frigateId: string;
   type: string;
   label?: string | null;
+  subLabel?: string | null;
   hasSnapshot: boolean;
   hasClip: boolean;
   startTime?: number | null;
@@ -183,6 +184,7 @@ async function createOrUpdateEvent(
   frigateId: string,
   type: string,
   label: string | undefined,
+  subLabel: string | undefined,
   hasSnapshot: boolean,
   hasClip: boolean,
   startTime: number | null,
@@ -202,6 +204,7 @@ async function createOrUpdateEvent(
       frigateId,
       type,
       label,
+      subLabel,
       hasSnapshot,
       hasClip,
       startTime,
@@ -211,6 +214,7 @@ async function createOrUpdateEvent(
     update: {
       type,
       label: label || undefined,
+      subLabel: subLabel || undefined,
       hasSnapshot,
       hasClip,
       startTime: startTime ?? undefined,
@@ -301,6 +305,7 @@ export async function handleFrigateEvent(
           frigateId: normalized.eventId,
           type: normalized.type,
           label: normalized.label,
+          subLabel: normalized.subLabel,
           hasSnapshot: normalized.hasSnapshot,
           hasClip: normalized.hasClip,
           startTime: normalized.startTime,
@@ -310,6 +315,7 @@ export async function handleFrigateEvent(
         update: {
           type: normalized.type,
           label: normalized.label,
+          subLabel: normalized.subLabel ?? undefined,
           hasSnapshot: normalized.hasSnapshot,
           hasClip: normalized.hasClip,
           startTime: normalized.startTime ?? undefined,

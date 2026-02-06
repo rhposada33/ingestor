@@ -53,6 +53,7 @@ export type Event = {
   frigateId: string;
   type: string;
   label: string | null;
+  subLabel: string | null;
   hasSnapshot: boolean;
   hasClip: boolean;
   startTime: number | null;

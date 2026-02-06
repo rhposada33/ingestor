@@ -41,6 +41,9 @@ export interface NormalizedFrigateEvent {
   // Primary detected object label (person, car, dog, cat, etc.)
   label: string;
 
+  // Recognized sub-label (e.g., face name)
+  subLabel?: string;
+
   // Availability flags
   hasSnapshot: boolean;
   hasClip: boolean;
@@ -233,6 +236,32 @@ function safeGet<T = unknown>(
 
   // Return as-is; caller responsible for type safety
   return value as T;
+}
+
+/**
+ * Extract sub-label value from Frigate payloads.
+ *
+ * Frigate may emit sub_label as:
+ * - string
+ * - array [label, confidence]
+ */
+function extractSubLabel(value: unknown): string | null {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    return value.trim() || null;
+  }
+
+  if (Array.isArray(value) && value.length > 0) {
+    const [label] = value;
+    if (typeof label === 'string') {
+      return label.trim() || null;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -429,8 +458,15 @@ export function normalizeEventMessage(
     metadata.zones = zones;
   }
 
-  // Extract sub-label if available
-  const subLabel = safeGet<string>(payload, 'sub_label') || safeGet<string>(payload, 'subLabel');
+  // Extract sub-label if available (root or before/after)
+  const rawSubLabel =
+    safeGet(payload, 'sub_label') ||
+    safeGet(payload, 'subLabel') ||
+    safeGet(after_data, 'sub_label') ||
+    safeGet(after_data, 'subLabel') ||
+    safeGet(before_data, 'sub_label') ||
+    safeGet(before_data, 'subLabel');
+  const subLabel = extractSubLabel(rawSubLabel);
   if (subLabel) {
     metadata.subLabel = subLabel;
   }
@@ -441,6 +477,7 @@ export function normalizeEventMessage(
     camera,
     type: type as 'new' | 'update' | 'end',
     label,
+    subLabel: subLabel || undefined,
     hasSnapshot,
     hasClip,
     startTime,
